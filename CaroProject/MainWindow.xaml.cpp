@@ -10,6 +10,9 @@ using namespace winrt;
 using namespace Microsoft::UI::Xaml;
 using namespace Microsoft::UI::Xaml::Controls;
 using namespace Microsoft::UI::Xaml::Media;
+using namespace Windows::Networking::Sockets;
+using namespace Windows::Storage::Streams;
+using namespace Windows::Networking;
 
 namespace winrt::CaroProject::implementation
 {
