@@ -1,0 +1,10 @@
+<Solution>
+  <Configurations>
+    <Platform Name="ARM64" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="CaroProject/CaroProject.vcxproj" Id="7d3dd80a-2611-4475-b16f-20906305a774">
+    <Deploy />
+  </Project>
+</Solution>
