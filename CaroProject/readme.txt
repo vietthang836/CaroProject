@@ -25,4 +25,3 @@ https://docs.microsoft.com/windows/apps/winui/winui3/
 Learn more about C++/WinRT here:
 http://aka.ms/cppwinrt/
 ========================================================================
-co caro chay tren win 11
