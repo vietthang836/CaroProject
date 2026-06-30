@@ -51,7 +51,7 @@ namespace CaroProject::implementation
                 btn.Content(box_value(L""));
                 btn.Background(nullptr);
 
-                winrt::hstring tagStr = to_hstring(row) + L"," + to_hstring(col);
+                hstring tagStr = to_hstring(row) + L"," + to_hstring(col);
                 btn.Tag(box_value(tagStr));
                 btn.Click({ this, &MainWindow::OnCellClicked });
 
