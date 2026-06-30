@@ -14,7 +14,7 @@ using namespace Windows::Networking::Sockets;
 using namespace Windows::Storage::Streams;
 using namespace Windows::Networking;
 
-namespace winrt::CaroProject::implementation
+namespace CaroProject::implementation
 {
     MainWindow::MainWindow()
     {
@@ -62,17 +62,17 @@ namespace winrt::CaroProject::implementation
         }
     }
 
-    winrt::fire_and_forget MainWindow::OnCellClicked(IInspectable const& sender, RoutedEventArgs const& args)
+    fire_and_forget MainWindow::OnCellClicked(IInspectable const& sender, RoutedEventArgs const& args)
     {
         if (isGameOver) co_return;
 
         Button clickedBtn = sender.as<Button>();
-        winrt::hstring tagStr = unbox_value<winrt::hstring>(clickedBtn.Tag());
+        hstring tagStr = unbox_value<hstring>(clickedBtn.Tag());
 
-        std::wstring tagWstr(tagStr.c_str());
+        wstring tagWstr(tagStr.c_str());
         size_t commaPos = tagWstr.find(L',');
-        int row = std::stoi(tagWstr.substr(0, commaPos));
-        int col = std::stoi(tagWstr.substr(commaPos + 1));
+        int row = stoi(tagWstr.substr(0, commaPos));
+        int col = stoi(tagWstr.substr(commaPos + 1));
 
         if (board[row][col] != EMPTY) co_return;
 
@@ -90,7 +90,7 @@ namespace winrt::CaroProject::implementation
 
         if (CheckWin(row, col, currentPlayer)) {
             isGameOver = true;
-            winrt::hstring winnerMsg = (currentPlayer == PLAYER_1) ?
+            hstring winnerMsg = (currentPlayer == PLAYER_1) ?
                 L"Chuc mung! Nguoi choi 1 (X) da gianh chien thang!" :
                 L"Chuc mung! Nguoi choi 2 (O) da gianh chien thang!";
 
@@ -186,11 +186,11 @@ namespace winrt::CaroProject::implementation
         if (bestR != -1 && bestC != -1) {
             for (auto const& child : BoardGrid().Children()) {
                 Button btn = child.as<Button>();
-                winrt::hstring tagStr = unbox_value<winrt::hstring>(btn.Tag());
-                std::wstring tagWstr(tagStr.c_str());
+                winrt::hstring tagStr = unbox_value<hstring>(btn.Tag());
+                wstring tagWstr(tagStr.c_str());
                 size_t commaPos = tagWstr.find(L',');
-                int r = std::stoi(tagWstr.substr(0, commaPos));
-                int c = std::stoi(tagWstr.substr(commaPos + 1));
+                int r = stoi(tagWstr.substr(0, commaPos));
+                int c = stoi(tagWstr.substr(commaPos + 1));
 
                 if (r == bestR && c == bestC) {
                     btn.Background(SolidColorBrush(Microsoft::UI::Colors::Yellow()));
