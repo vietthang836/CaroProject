@@ -5,16 +5,13 @@
 #if __has_include("MainWindow.g.cpp")
 #include "MainWindow.g.cpp"
 #endif
-using namespace std;
+
 using namespace winrt;
 using namespace Microsoft::UI::Xaml;
 using namespace Microsoft::UI::Xaml::Controls;
 using namespace Microsoft::UI::Xaml::Media;
-using namespace Windows::Networking::Sockets;
-using namespace Windows::Storage::Streams;
-using namespace Windows::Networking;
 
-namespace CaroProject::implementation
+namespace winrt::CaroProject::implementation
 {
     MainWindow::MainWindow()
     {
@@ -51,7 +48,7 @@ namespace CaroProject::implementation
                 btn.Content(box_value(L""));
                 btn.Background(nullptr);
 
-                hstring tagStr = to_hstring(row) + L"," + to_hstring(col);
+                winrt::hstring tagStr = to_hstring(row) + L"," + to_hstring(col);
                 btn.Tag(box_value(tagStr));
                 btn.Click({ this, &MainWindow::OnCellClicked });
 
@@ -62,17 +59,17 @@ namespace CaroProject::implementation
         }
     }
 
-    fire_and_forget MainWindow::OnCellClicked(IInspectable const& sender, RoutedEventArgs const& args)
+    winrt::fire_and_forget MainWindow::OnCellClicked(IInspectable const& sender, RoutedEventArgs const& args)
     {
         if (isGameOver) co_return;
 
         Button clickedBtn = sender.as<Button>();
-        hstring tagStr = unbox_value<hstring>(clickedBtn.Tag());
+        winrt::hstring tagStr = unbox_value<winrt::hstring>(clickedBtn.Tag());
 
-        wstring tagWstr(tagStr.c_str());
+        std::wstring tagWstr(tagStr.c_str());
         size_t commaPos = tagWstr.find(L',');
-        int row = stoi(tagWstr.substr(0, commaPos));
-        int col = stoi(tagWstr.substr(commaPos + 1));
+        int row = std::stoi(tagWstr.substr(0, commaPos));
+        int col = std::stoi(tagWstr.substr(commaPos + 1));
 
         if (board[row][col] != EMPTY) co_return;
 
@@ -90,7 +87,7 @@ namespace CaroProject::implementation
 
         if (CheckWin(row, col, currentPlayer)) {
             isGameOver = true;
-            hstring winnerMsg = (currentPlayer == PLAYER_1) ?
+            winrt::hstring winnerMsg = (currentPlayer == PLAYER_1) ?
                 L"Chuc mung! Nguoi choi 1 (X) da gianh chien thang!" :
                 L"Chuc mung! Nguoi choi 2 (O) da gianh chien thang!";
 
@@ -186,11 +183,11 @@ namespace CaroProject::implementation
         if (bestR != -1 && bestC != -1) {
             for (auto const& child : BoardGrid().Children()) {
                 Button btn = child.as<Button>();
-                winrt::hstring tagStr = unbox_value<hstring>(btn.Tag());
-                wstring tagWstr(tagStr.c_str());
+                winrt::hstring tagStr = unbox_value<winrt::hstring>(btn.Tag());
+                std::wstring tagWstr(tagStr.c_str());
                 size_t commaPos = tagWstr.find(L',');
-                int r = stoi(tagWstr.substr(0, commaPos));
-                int c = stoi(tagWstr.substr(commaPos + 1));
+                int r = std::stoi(tagWstr.substr(0, commaPos));
+                int c = std::stoi(tagWstr.substr(commaPos + 1));
 
                 if (r == bestR && c == bestC) {
                     btn.Background(SolidColorBrush(Microsoft::UI::Colors::Yellow()));
