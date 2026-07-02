@@ -49,7 +49,7 @@ namespace winrt::CaroProject::implementation
     void MainWindow::ResetTimer()
     {
         timeLeft = TURN_TIME_LIMIT;
-        TimerText().Text(L"⏳ Thoi gian: " + to_hstring(timeLeft) + L"s");
+        TimerText().Text(L"Thoi gian: " + to_hstring(timeLeft) + L"s");
         turnTimer.Start();
     }
 
@@ -61,7 +61,7 @@ namespace winrt::CaroProject::implementation
         }
 
         timeLeft--;
-        TimerText().Text(L"⏳ Thoi gian: " + to_hstring(timeLeft) + L"s");
+        TimerText().Text(L"Thoi gian: " + to_hstring(timeLeft) + L"s");
 
         // Neu het gio
         if (timeLeft <= 0) {
@@ -477,24 +477,100 @@ namespace winrt::CaroProject::implementation
     }
 
     // =====================================================================
-    // HOST GAME
-    // =====================================================================
+        // HOST GAME (Tao phong - Dong vai tro Server)
+        // =====================================================================
     winrt::fire_and_forget MainWindow::HostGame_Click(
         IInspectable const&,
         RoutedEventArgs const&)
     {
-        StatusText().Text(L"Host chua duoc khoi phuc.");
-        co_return;
+        try
+        {
+            // Don dep listener cu neu co
+            if (tcpListener != nullptr) {
+                tcpListener.Close();
+                tcpListener = nullptr;
+            }
+
+            tcpListener = StreamSocketListener();
+
+            // Lang nghe su kien khi co Client ket noi toi
+            tcpListener.ConnectionReceived([this](
+                StreamSocketListener const& /*sender*/,
+                StreamSocketListenerConnectionReceivedEventArgs const& args)
+                {
+                    // Lay socket duoc tao ra tu ket noi
+                    networkSocket = args.Socket();
+                    socketWriter = DataWriter(networkSocket.OutputStream());
+
+                    isNetworkMode = true;
+                    networkRole = PLAYER_1; // Host mac dinh di truoc (X)
+
+                    // Cap nhat UI (Phai dua vao DispatcherQueue vi day la luong mang)
+                    DispatcherQueue().TryEnqueue([this]() {
+                        StatusText().Text(L"Trang thai: Da ket noi! Ban la Host (X).");
+                        InitBoard(); // Khoi tao lai ban co khi co nguoi vao
+                        });
+
+                    // Bat dau vong lap doc du lieu tu Client
+                    ListenForDataAsync(networkSocket);
+                });
+
+            // Mo cong 9000 de doi ket noi
+            co_await tcpListener.BindServiceNameAsync(L"9000");
+
+            StatusText().Text(L"Trang thai: Dang cho doi thu (Cong 9000)...");
+        }
+        catch (winrt::hresult_error const& ex)
+        {
+            StatusText().Text(L"Loi tao phong: " + ex.message());
+        }
     }
 
     // =====================================================================
-    // JOIN GAME
+    // JOIN GAME (Vao phong - Dong vai tro Client)
     // =====================================================================
     winrt::fire_and_forget MainWindow::JoinGame_Click(
         IInspectable const&,
         RoutedEventArgs const&)
     {
-        StatusText().Text(L"Join chua duoc khoi phuc.");
-        co_return;
+        try
+        {
+            winrt::hstring ipAddress = IpTextBox().Text();
+            if (ipAddress.empty()) {
+                StatusText().Text(L"Vui long nhap IP Server!");
+                co_return;
+            }
+
+            // Don dep socket cu neu co
+            if (networkSocket != nullptr) {
+                networkSocket.Close();
+                networkSocket = nullptr;
+            }
+
+            StatusText().Text(L"Trang thai: Dang ket noi...");
+
+            networkSocket = StreamSocket();
+            HostName hostName{ ipAddress };
+
+            // Yeu cau ket noi toi IP va Cong 9000
+            co_await networkSocket.ConnectAsync(hostName, L"9000");
+
+            // Neu ket noi thanh cong:
+            socketWriter = DataWriter(networkSocket.OutputStream());
+            isNetworkMode = true;
+            networkRole = PLAYER_2; // Client mac dinh di sau (O)
+
+            StatusText().Text(L"Trang thai: Da ket noi! Ban la Client (O).");
+
+            // Khoi tao ban co
+            InitBoard();
+
+            // Bat dau vong lap doc du lieu tu Host
+            ListenForDataAsync(networkSocket);
+        }
+        catch (winrt::hresult_error const& ex)
+        {
+            StatusText().Text(L"Loi ket noi: Khong tim thay Server.");
+        }
     }
 }

@@ -3,7 +3,7 @@
 #include <winrt/Windows.Networking.Sockets.h>
 #include <winrt/Windows.Storage.Streams.h>
 #include <winrt/Windows.Networking.h>
-#include <winrt/Microsoft.UI.Xaml.h> // Bắt buộc cho DispatcherTimer
+#include <winrt/Microsoft.UI.Xaml.h>
 
 namespace winrt::CaroProject::implementation
 {
