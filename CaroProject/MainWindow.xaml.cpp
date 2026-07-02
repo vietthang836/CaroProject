@@ -37,7 +37,7 @@ namespace winrt::CaroProject::implementation
     }
 
     // =====================================================================
-    // LOGIC HẸN GIỜ (TIMER)
+    // LOGIC HEN GIO (TIMER)
     // =====================================================================
     void MainWindow::SetupTimer()
     {
@@ -49,7 +49,7 @@ namespace winrt::CaroProject::implementation
     void MainWindow::ResetTimer()
     {
         timeLeft = TURN_TIME_LIMIT;
-        TimerText().Text(L"⏳ Thời gian: " + to_hstring(timeLeft) + L"s");
+        TimerText().Text(L"⏳ Thoi gian: " + to_hstring(timeLeft) + L"s");
         turnTimer.Start();
     }
 
@@ -61,9 +61,9 @@ namespace winrt::CaroProject::implementation
         }
 
         timeLeft--;
-        TimerText().Text(L"⏳ Thời gian: " + to_hstring(timeLeft) + L"s");
+        TimerText().Text(L"⏳ Thoi gian: " + to_hstring(timeLeft) + L"s");
 
-        // Nếu hết giờ
+        // Neu het gio
         if (timeLeft <= 0) {
             turnTimer.Stop();
             EndGameTimeout();
@@ -73,11 +73,11 @@ namespace winrt::CaroProject::implementation
     void MainWindow::EndGameTimeout()
     {
         isGameOver = true;
-        winrt::hstring loser = (currentPlayer == PLAYER_1) ? L"Người chơi 1 (X)" : L"Người chơi 2 (O)";
-        TurnText().Text(loser + L" đã hết giờ!");
-        StatusText().Text(L"Trận đấu kết thúc do hết thời gian.");
+        winrt::hstring loser = (currentPlayer == PLAYER_1) ? L"Nguoi choi 1 (X)" : L"Nguoi choi 2 (O)";
+        TurnText().Text(loser + L" da het gio!");
+        StatusText().Text(L"Tran dau ket thuc do het thoi gian.");
 
-        // Nếu đang chơi mạng và chính LÀ MÌNH hết giờ -> Gửi thông báo đầu hàng cho đối thủ
+        // Neu dang choi mang va chinh LA MINH het gio -> Gui thong bao dau hang cho doi thu
         if (isNetworkMode && currentPlayer == networkRole) {
             SendNetworkMessageAsync(L"TIMEOUT|");
         }
@@ -89,14 +89,14 @@ namespace winrt::CaroProject::implementation
         currentPlayer = PLAYER_1;
 
         if (isNetworkMode) {
-            TurnText().Text(networkRole == PLAYER_1 ? L"Lượt của bạn (X)" : L"Đợi đối thủ đi... (X đi trước)");
+            TurnText().Text(networkRole == PLAYER_1 ? L"Luot cua ban (X)" : L"Doi doi thu di... (X di truoc)");
         }
         else {
             TurnText().Text(L"Luot di: Nguoi choi 1 (X)");
         }
 
         BoardGrid().Children().Clear();
-        ChatPanel().Children().Clear(); // Xóa chat cũ khi chơi lại
+        ChatPanel().Children().Clear(); // Xoa chat cu khi choi lai
 
         for (int row = 0; row < BOARD_SIZE; ++row) {
             for (int col = 0; col < BOARD_SIZE; ++col) {
@@ -114,11 +114,11 @@ namespace winrt::CaroProject::implementation
                 BoardGrid().Children().Append(btn);
             }
         }
-        ResetTimer(); // Bắt đầu đếm giờ
+        ResetTimer(); // Bat dau dem gio
     }
 
     // =====================================================================
-    // GIAO THỨC MẠNG ĐA NĂNG (GỬI CHAT & TỌA ĐỘ)
+    // GIAO THUC MANG DA NANG (GUI CHAT & TOA DO)
     // =====================================================================
     winrt::fire_and_forget MainWindow::SendNetworkMessageAsync(winrt::hstring const& message)
     {
@@ -149,7 +149,7 @@ namespace winrt::CaroProject::implementation
                 std::wstring msgStr(rawMsg.c_str());
 
                 DispatcherQueue().TryEnqueue([this, msgStr]() {
-                    // 1. Phân tích gói tin ĐÁNH CỜ
+                    // 1. Phan tich goi tin DANH CO
                     if (msgStr.rfind(L"MOVE|", 0) == 0) {
                         std::wstring coord = msgStr.substr(5);
                         size_t comma = coord.find(L',');
@@ -159,12 +159,12 @@ namespace winrt::CaroProject::implementation
                             ApplyMoveToMatrixAndUI(r, c);
                         }
                     }
-                    // 2. Phân tích gói tin CHAT
+                    // 2. Phan tich goi tin CHAT
                     else if (msgStr.rfind(L"CHAT|", 0) == 0) {
                         winrt::hstring chatMsg(msgStr.substr(5));
-                        AppendChatMessage(L"Đối thủ", chatMsg, false);
+                        AppendChatMessage(L"Doi thu", chatMsg, false);
                     }
-                    // 3. Phân tích gói tin HẾT GIỜ
+                    // 3. Phan tich goi tin HET GIO
                     else if (msgStr.rfind(L"TIMEOUT|", 0) == 0) {
                         EndGameTimeout();
                     }
@@ -172,11 +172,11 @@ namespace winrt::CaroProject::implementation
             }
         }
         catch (...) {}
-        DispatcherQueue().TryEnqueue([this]() { StatusText().Text(L"Trạng thái: Mất kết nối mạng."); });
+        DispatcherQueue().TryEnqueue([this]() { StatusText().Text(L"Trang thai: Mat ket noi mang."); });
     }
 
     // =====================================================================
-    // LOGIC ĐÁNH CỜ VÀ CHAT UI
+    // LOGIC DANH CO VA CHAT UI
     // =====================================================================
     winrt::fire_and_forget MainWindow::OnCellClicked(IInspectable const& sender, RoutedEventArgs const&)
     {
@@ -193,7 +193,7 @@ namespace winrt::CaroProject::implementation
         if (board[r][c] != EMPTY) co_return;
 
         if (isNetworkMode) {
-            // Đóng gói với tiền tố MOVE|
+            // Dong goi voi tien to MOVE|
             SendNetworkMessageAsync(L"MOVE|" + to_hstring(r) + L"," + to_hstring(c));
         }
 
@@ -218,24 +218,24 @@ namespace winrt::CaroProject::implementation
         if (CheckWin(r, c, currentPlayer)) {
             isGameOver = true;
             turnTimer.Stop();
-            TurnText().Text(currentPlayer == PLAYER_1 ? L"Người chơi 1 (X) Thắng!" : L"Người chơi 2 (O) Thắng!");
+            TurnText().Text(currentPlayer == PLAYER_1 ? L"Nguoi choi 1 (X) Thang!" : L"Nguoi choi 2 (O) Thang!");
             return;
         }
 
         currentPlayer = (currentPlayer == PLAYER_1) ? PLAYER_2 : PLAYER_1;
 
         if (isNetworkMode) {
-            TurnText().Text(currentPlayer == networkRole ? L"Lượt của bạn!" : L"Đợi đối thủ đi...");
+            TurnText().Text(currentPlayer == networkRole ? L"Luot cua ban!" : L"Doi doi thu di...");
         }
         else {
             TurnText().Text(currentPlayer == PLAYER_1 ? L"Luot di: Nguoi choi 1 (X)" : L"Luot di: Nguoi choi 2 (O)");
         }
 
-        ResetTimer(); // Chuyển lượt thì Reset lại đồng hồ
+        ResetTimer(); // Chuyen luot thi Reset lai dong ho
     }
 
     // =====================================================================
-    // LOGIC XỬ LÝ KHUNG CHAT
+    // LOGIC XU LY KHUNG CHAT
     // =====================================================================
     void MainWindow::AppendChatMessage(winrt::hstring const& senderName, winrt::hstring const& message, bool isMe)
     {
@@ -243,7 +243,7 @@ namespace winrt::CaroProject::implementation
         textBlock.Text(senderName + L": " + message);
         textBlock.TextWrapping(TextWrapping::Wrap);
 
-        // Màu tin nhắn phân biệt mình và địch
+        // Mau tin nhan phan biet minh va dich
         if (isMe) {
             textBlock.Foreground(SolidColorBrush(Microsoft::UI::Colors::DarkGreen()));
             textBlock.HorizontalAlignment(HorizontalAlignment::Right);
@@ -255,7 +255,7 @@ namespace winrt::CaroProject::implementation
 
         ChatPanel().Children().Append(textBlock);
 
-        // Tự động cuộn xuống dòng mới nhất
+        // Tu dong cuon xuong dong moi nhat
         ChatScroll().UpdateLayout();
         ChatScroll().ChangeView(nullptr, ChatScroll().ScrollableHeight(), nullptr);
     }
@@ -265,26 +265,26 @@ namespace winrt::CaroProject::implementation
         winrt::hstring msg = ChatInputTextBox().Text();
         if (msg.empty()) return;
 
-        AppendChatMessage(L"Tôi", msg, true);
+        AppendChatMessage(L"Toi", msg, true);
 
         if (isNetworkMode) {
-            // Đóng gói với tiền tố CHAT|
+            // Dong goi voi tien to CHAT|
             SendNetworkMessageAsync(L"CHAT|" + msg);
         }
 
-        ChatInputTextBox().Text(L""); // Xóa ô nhập liệu sau khi gửi
+        ChatInputTextBox().Text(L""); // Xoa o nhap lieu sau khi gui
     }
 
     void MainWindow::ChatInputTextBox_KeyDown(IInspectable const&, Microsoft::UI::Xaml::Input::KeyRoutedEventArgs const& args)
     {
-        // Cho phép ấn Enter để gửi Chat
+        // Cho phep an Enter de gui Chat
         if (args.Key() == winrt::Windows::System::VirtualKey::Enter) {
             SendChat_Click(nullptr, nullptr);
         }
     }
     // =====================================================================
-// CHECK WIN
-// =====================================================================
+    // CHECK WIN
+    // =====================================================================
     bool MainWindow::CheckWin(int r, int c, int player)
     {
         int dirX[] = { 1, 0, 1, 1 };
@@ -483,7 +483,7 @@ namespace winrt::CaroProject::implementation
         IInspectable const&,
         RoutedEventArgs const&)
     {
-        StatusText().Text(L"Host chưa được khôi phục.");
+        StatusText().Text(L"Host chua duoc khoi phuc.");
         co_return;
     }
 
@@ -494,7 +494,7 @@ namespace winrt::CaroProject::implementation
         IInspectable const&,
         RoutedEventArgs const&)
     {
-        StatusText().Text(L"Join chưa được khôi phục.");
+        StatusText().Text(L"Join chua duoc khoi phuc.");
         co_return;
     }
 }
