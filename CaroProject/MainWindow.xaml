@@ -6,63 +6,75 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <Grid Background="#F5F5F5" Padding="20">
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="350"/>
-        </Grid.ColumnDefinitions>
+    <Grid Background="#F5F5F5">
 
-        <StackPanel Grid.Column="0" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <StackPanel x:Name="MenuScreen" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="20">
+            <TextBlock Text="GAME CARO" FontSize="45" FontWeight="Bold" Foreground="#1E88E5" HorizontalAlignment="Center" Margin="0,0,0,20"/>
 
-            <Border Background="White" CornerRadius="8" Padding="15" Margin="0,0,0,15" BorderBrush="#E0E0E0" BorderThickness="1">
+            <Button Content="Choi 2 Nguoi (Offline)" Width="300" Height="50" Click="LocalPlay_Click" Background="#43A047" Foreground="White" FontSize="16" FontWeight="SemiBold"/>
+
+            <Border Background="White" Padding="20" CornerRadius="8" BorderBrush="#E0E0E0" BorderThickness="1" Width="300">
                 <StackPanel Spacing="10">
-                    <TextBlock Text="CẤU HÌNH MẠNG" FontSize="12" FontWeight="Bold" Foreground="#757575"/>
-                    <StackPanel Orientation="Horizontal" Spacing="10">
-                        <TextBox x:Name="IpTextBox" Text="127.0.0.1" PlaceholderText="Nhập IP Server" Width="150"/>
-                        <Button Content="Tạo Phòng" Click="HostGame_Click" Background="#1E88E5" Foreground="White"/>
-                        <Button Content="Vào Phòng" Click="JoinGame_Click"/>
-                    </StackPanel>
-                    <TextBlock x:Name="StatusText" Text="Trạng thái: Chế độ Offline" FontSize="13" Foreground="#1E88E5" FontWeight="SemiBold"/>
+                    <TextBlock Text="Choi Mang (Online)" FontWeight="Bold" FontSize="16" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                    <TextBox x:Name="IpTextBox" Text="127.0.0.1" PlaceholderText="Nhap IP Server" Height="40"/>
+                    <Button Content="Tao Phong (Host)" Width="258" Height="40" Click="HostGame_Click" Background="#1E88E5" Foreground="White"/>
+                    <Button Content="Vao Phong (Join)" Width="258" Height="40" Click="JoinGame_Click"/>
                 </StackPanel>
             </Border>
 
-            <TextBlock x:Name="TurnText" Text="Lượt đi: Người chơi 1 (X)" FontSize="22" Margin="0,0,0,10" Foreground="#212121" FontWeight="Bold" HorizontalAlignment="Center"/>
-            <TextBlock x:Name="TimerText" Text="Thời gian: 30s" FontSize="18" Margin="0,0,0,15" Foreground="Red" FontWeight="Bold" HorizontalAlignment="Center"/>
-
-            <Border BorderBrush="#424242" BorderThickness="3" CornerRadius="4" HorizontalAlignment="Center" Background="#E0E0E0">
-                <Grid x:Name="BoardGrid" Padding="2"></Grid>
-            </Border>
-
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20,0,0" Spacing="20">
-                <Button Content="Gợi Ý Nước Đi" Width="150" Height="40" Click="HintButton_Click" Background="#FFB300"/>
-                <Button Content="Chơi Lại" Width="120" Height="40" Click="RestartButton_Click"/>
-            </StackPanel>
+            <TextBlock x:Name="MenuStatusText" Text="" Foreground="Red" FontWeight="SemiBold" HorizontalAlignment="Center"/>
         </StackPanel>
 
-        <Border Grid.Column="1" Background="White" BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="8" Padding="15" Margin="20,0,0,0">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-                <TextBlock Grid.Row="0" Text="TRÒ CHUYỆN" FontSize="16" FontWeight="Bold" Foreground="#424242" Margin="0,0,0,10"/>
+        <Grid x:Name="GameScreen" Visibility="Collapsed" Padding="20">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="350"/>
+            </Grid.ColumnDefinitions>
 
-                <ScrollViewer Grid.Row="1" x:Name="ChatScroll" Background="#FAFAFA" BorderBrush="#EEEEEE" BorderThickness="1" Padding="10" Margin="0,0,0,10">
-                    <StackPanel x:Name="ChatPanel" Spacing="8">
-                    </StackPanel>
-                </ScrollViewer>
+            <StackPanel Grid.Column="0" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <TextBlock x:Name="StatusText" Text="Trang thai: Da ket noi" FontSize="13" Foreground="#1E88E5" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                <TextBlock x:Name="TurnText" Text="Luot di: Nguoi choi 1 (X)" FontSize="22" Margin="0,0,0,10" Foreground="#212121" FontWeight="Bold" HorizontalAlignment="Center"/>
+                <TextBlock x:Name="TimerText" Text="Thoi gian: 30s" FontSize="18" Margin="0,0,0,15" Foreground="Red" FontWeight="Bold" HorizontalAlignment="Center"/>
 
-                <Grid Grid.Row="2">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBox x:Name="ChatInputTextBox" Grid.Column="0" PlaceholderText="Nhập tin nhắn..." KeyDown="ChatInputTextBox_KeyDown" Margin="0,0,10,0"/>
-                    <Button Grid.Column="1" Content="Gửi" Click="SendChat_Click" Background="#43A047" Foreground="White"/>
+                <Border BorderBrush="#424242" BorderThickness="3" CornerRadius="4" HorizontalAlignment="Center" Background="#E0E0E0">
+                    <Grid x:Name="BoardGrid" Padding="2"></Grid>
+                </Border>
+
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20,0,0" Spacing="20">
+                    <Button Content="Goi Y Nuoc Di" Width="150" Height="40" Click="HintButton_Click" Background="#FFB300"/>
+                    <Button Content="Dau Hang" Width="120" Height="40" Click="SurrenderButton_Click" Background="#E53935" Foreground="White"/>
+                </StackPanel>
+            </StackPanel>
+
+            <Border Grid.Column="1" Background="White" BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="8" Padding="15" Margin="20,0,0,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Text="TRO CHUYEN" FontSize="16" FontWeight="Bold" Foreground="#424242" Margin="0,0,0,10"/>
+
+                    <ScrollViewer Grid.Row="1" x:Name="ChatScroll" Background="#FAFAFA" BorderBrush="#EEEEEE" BorderThickness="1" Padding="10" Margin="0,0,0,10">
+                        <StackPanel x:Name="ChatPanel" Spacing="8"></StackPanel>
+                    </ScrollViewer>
+
+                    <Grid Grid.Row="2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="ChatInputTextBox" Grid.Column="0" PlaceholderText="Nhap tin nhan..." KeyDown="ChatInputTextBox_KeyDown" Margin="0,0,10,0"/>
+                        <Button Grid.Column="1" Content="Gui" Click="SendChat_Click" Background="#43A047" Foreground="White"/>
+                    </Grid>
                 </Grid>
-            </Grid>
-        </Border>
+            </Border>
+        </Grid>
+
+        <StackPanel x:Name="ResultScreen" Visibility="Collapsed" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="20">
+            <TextBlock x:Name="WinnerText" Text="NGUOI CHOI 1 THANG!" FontSize="40" FontWeight="Bold" Foreground="#43A047" HorizontalAlignment="Center"/>
+            <Button Content="Ve Man Hinh Chinh" Width="200" Height="50" Click="BackToMenu_Click" Background="#1E88E5" Foreground="White" FontSize="16" HorizontalAlignment="Center"/>
+        </StackPanel>
 
     </Grid>
 </Window>

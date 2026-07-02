@@ -11,7 +11,6 @@
 using namespace winrt;
 using namespace Microsoft::UI::Xaml;
 using namespace Microsoft::UI::Xaml::Controls;
-using namespace Microsoft::UI::Xaml::Controls;
 using namespace Microsoft::UI::Xaml::Media;
 using namespace Windows::Networking::Sockets;
 using namespace Windows::Storage::Streams;
@@ -22,6 +21,7 @@ namespace winrt::CaroProject::implementation
     MainWindow::MainWindow()
     {
         InitializeComponent();
+
         for (int i = 0; i < BOARD_SIZE; ++i)
         {
             RowDefinition rowDef;
@@ -33,92 +33,133 @@ namespace winrt::CaroProject::implementation
             BoardGrid().ColumnDefinitions().Append(colDef);
         }
         SetupTimer();
+        // Xoa InitBoard() o day de khong chay timer khi dang o Menu
+    }
+
+    // =====================================================================
+    // MAN HINH: CHUYEN TRANG THAI GIAO DIEN
+    // =====================================================================
+    void MainWindow::LocalPlay_Click(IInspectable const&, RoutedEventArgs const&)
+    {
+        isNetworkMode = false;
+
+        MenuScreen().Visibility(Visibility::Collapsed);
+        ResultScreen().Visibility(Visibility::Collapsed);
+        GameScreen().Visibility(Visibility::Visible);
+
+        StatusText().Text(L"Trang thai: Choi 2 nguoi tren cung may.");
         InitBoard();
     }
 
-    // =====================================================================
-    // LOGIC HEN GIO (TIMER)
-    // =====================================================================
-    void MainWindow::SetupTimer()
+    void MainWindow::BackToMenu_Click(IInspectable const&, RoutedEventArgs const&)
     {
-        turnTimer = DispatcherTimer();
-        turnTimer.Interval(std::chrono::seconds(1));
-        turnTimer.Tick({ this, &MainWindow::OnTimerTick });
+        if (tcpListener != nullptr) { tcpListener.Close(); tcpListener = nullptr; }
+        if (networkSocket != nullptr) { networkSocket.Close(); networkSocket = nullptr; }
+
+        ResultScreen().Visibility(Visibility::Collapsed);
+        GameScreen().Visibility(Visibility::Collapsed);
+        MenuScreen().Visibility(Visibility::Visible);
+
+        MenuStatusText().Text(L"");
     }
 
-    void MainWindow::ResetTimer()
+    void MainWindow::ShowWinner(winrt::hstring const& message, bool isWin)
     {
-        timeLeft = TURN_TIME_LIMIT;
-        TimerText().Text(L"Thoi gian: " + to_hstring(timeLeft) + L"s");
-        turnTimer.Start();
+        turnTimer.Stop();
+
+        DispatcherQueue().TryEnqueue([this, message, isWin]() {
+            GameScreen().Visibility(Visibility::Collapsed);
+            MenuScreen().Visibility(Visibility::Collapsed);
+            ResultScreen().Visibility(Visibility::Visible);
+
+            WinnerText().Text(message);
+            WinnerText().Foreground(SolidColorBrush(isWin ? Microsoft::UI::Colors::DarkGreen() : Microsoft::UI::Colors::DarkRed()));
+            });
     }
 
-    void MainWindow::OnTimerTick(IInspectable const&, IInspectable const&)
+    void MainWindow::SurrenderButton_Click(IInspectable const&, RoutedEventArgs const&)
     {
-        if (isGameOver) {
-            turnTimer.Stop();
-            return;
-        }
-
-        timeLeft--;
-        TimerText().Text(L"Thoi gian: " + to_hstring(timeLeft) + L"s");
-
-        // Neu het gio
-        if (timeLeft <= 0) {
-            turnTimer.Stop();
-            EndGameTimeout();
-        }
-    }
-
-    void MainWindow::EndGameTimeout()
-    {
-        isGameOver = true;
-        winrt::hstring loser = (currentPlayer == PLAYER_1) ? L"Nguoi choi 1 (X)" : L"Nguoi choi 2 (O)";
-        TurnText().Text(loser + L" da het gio!");
-        StatusText().Text(L"Tran dau ket thuc do het thoi gian.");
-
-        // Neu dang choi mang va chinh LA MINH het gio -> Gui thong bao dau hang cho doi thu
-        if (isNetworkMode && currentPlayer == networkRole) {
+        if (isNetworkMode) {
             SendNetworkMessageAsync(L"TIMEOUT|");
         }
-    }
-
-    void MainWindow::InitBoard()
-    {
-        isGameOver = false;
-        currentPlayer = PLAYER_1;
-
-        if (isNetworkMode) {
-            TurnText().Text(networkRole == PLAYER_1 ? L"Luot cua ban (X)" : L"Doi doi thu di... (X di truoc)");
-        }
-        else {
-            TurnText().Text(L"Luot di: Nguoi choi 1 (X)");
-        }
-
-        BoardGrid().Children().Clear();
-        ChatPanel().Children().Clear(); // Xoa chat cu khi choi lai
-
-        for (int row = 0; row < BOARD_SIZE; ++row) {
-            for (int col = 0; col < BOARD_SIZE; ++col) {
-                board[row][col] = EMPTY;
-                Button btn;
-                btn.Width(40); btn.Height(40); btn.FontSize(18);
-                btn.FontWeight(Microsoft::UI::Text::FontWeights::Bold());
-                btn.Content(box_value(L""));
-                btn.Background(SolidColorBrush(Microsoft::UI::Colors::White()));
-                btn.Tag(box_value(to_hstring(row) + L"," + to_hstring(col)));
-                btn.Click({ this, &MainWindow::OnCellClicked });
-
-                Grid::SetRow(btn, row);
-                Grid::SetColumn(btn, col);
-                BoardGrid().Children().Append(btn);
-            }
-        }
-        ResetTimer(); // Bat dau dem gio
+        ShowWinner(L"BAN DA DAU HANG!", false);
     }
 
     // =====================================================================
-    // GIAO THUC MANG DA NANG (GUI CHAT & TOA DO)
+    // HOST GAME & JOIN GAME
+    // =====================================================================
+    winrt::fire_and_forget MainWindow::HostGame_Click(IInspectable const&, RoutedEventArgs const&)
+    {
+        try {
+            if (tcpListener != nullptr) { tcpListener.Close(); tcpListener = nullptr; }
+            tcpListener = StreamSocketListener();
+
+            tcpListener.ConnectionReceived([this](StreamSocketListener const&, StreamSocketListenerConnectionReceivedEventArgs const& args)
+                {
+                    networkSocket = args.Socket();
+                    socketWriter = DataWriter(networkSocket.OutputStream());
+                    isNetworkMode = true;
+                    networkRole = PLAYER_1;
+
+                    DispatcherQueue().TryEnqueue([this]() {
+                        MenuScreen().Visibility(Visibility::Collapsed);
+                        GameScreen().Visibility(Visibility::Visible);
+                        StatusText().Text(L"Trang thai: Da ket noi! Ban la Host (X).");
+                        InitBoard();
+                        });
+
+                    ListenForDataAsync(networkSocket);
+                });
+
+            co_await tcpListener.BindServiceNameAsync(L"9000");
+            MenuStatusText().Text(L"Trang thai: Dang cho doi thu (Cong 9000)...");
+            MenuStatusText().Foreground(SolidColorBrush(Microsoft::UI::Colors::Green()));
+        }
+        catch (winrt::hresult_error const& ex) {
+            MenuStatusText().Text(L"Loi tao phong: " + ex.message());
+            MenuStatusText().Foreground(SolidColorBrush(Microsoft::UI::Colors::Red()));
+        }
+    }
+
+    winrt::fire_and_forget MainWindow::JoinGame_Click(IInspectable const&, RoutedEventArgs const&)
+    {
+        try {
+            winrt::hstring ipAddress = IpTextBox().Text();
+            if (ipAddress.empty()) {
+                MenuStatusText().Text(L"Vui long nhap IP Server!");
+                MenuStatusText().Foreground(SolidColorBrush(Microsoft::UI::Colors::Red()));
+                co_return;
+            }
+
+            if (networkSocket != nullptr) { networkSocket.Close(); networkSocket = nullptr; }
+            MenuStatusText().Text(L"Trang thai: Dang ket noi...");
+            MenuStatusText().Foreground(SolidColorBrush(Microsoft::UI::Colors::Orange()));
+
+            networkSocket = StreamSocket();
+            HostName hostName{ ipAddress };
+            co_await networkSocket.ConnectAsync(hostName, L"9000");
+
+            socketWriter = DataWriter(networkSocket.OutputStream());
+            isNetworkMode = true;
+            networkRole = PLAYER_2;
+
+            DispatcherQueue().TryEnqueue([this]() {
+                MenuScreen().Visibility(Visibility::Collapsed);
+                GameScreen().Visibility(Visibility::Visible);
+                StatusText().Text(L"Trang thai: Da ket noi! Ban la Client (O).");
+                InitBoard();
+                });
+
+            ListenForDataAsync(networkSocket);
+        }
+        catch (winrt::hresult_error const& ex) {
+            MenuStatusText().Text(L"Loi ket noi: Khong tim thay Server.");
+            MenuStatusText().Foreground(SolidColorBrush(Microsoft::UI::Colors::Red()));
+        }
+    }
+
+    // =====================================================================
+    // TRUYEN NHAN MANG DA NANG
     // =====================================================================
     winrt::fire_and_forget MainWindow::SendNetworkMessageAsync(winrt::hstring const& message)
     {
@@ -145,11 +186,9 @@ namespace winrt::CaroProject::implementation
                 unsigned int payloadBytes = co_await reader.LoadAsync(payloadLength);
                 if (payloadBytes != payloadLength) break;
                 winrt::hstring rawMsg = reader.ReadString(payloadLength);
-
                 std::wstring msgStr(rawMsg.c_str());
 
                 DispatcherQueue().TryEnqueue([this, msgStr]() {
-                    // 1. Phan tich goi tin DANH CO
                     if (msgStr.rfind(L"MOVE|", 0) == 0) {
                         std::wstring coord = msgStr.substr(5);
                         size_t comma = coord.find(L',');
@@ -159,14 +198,12 @@ namespace winrt::CaroProject::implementation
                             ApplyMoveToMatrixAndUI(r, c);
                         }
                     }
-                    // 2. Phan tich goi tin CHAT
                     else if (msgStr.rfind(L"CHAT|", 0) == 0) {
                         winrt::hstring chatMsg(msgStr.substr(5));
                         AppendChatMessage(L"Doi thu", chatMsg, false);
                     }
-                    // 3. Phan tich goi tin HET GIO
                     else if (msgStr.rfind(L"TIMEOUT|", 0) == 0) {
-                        EndGameTimeout();
+                        ShowWinner(L"DOI THU DA DAU HANG (HOAC HET GIO)! (THANG)", true);
                     }
                     });
             }
@@ -176,7 +213,86 @@ namespace winrt::CaroProject::implementation
     }
 
     // =====================================================================
-    // LOGIC DANH CO VA CHAT UI
+    // LOGIC HEN GIO (TIMER)
+    // =====================================================================
+    void MainWindow::SetupTimer()
+    {
+        turnTimer = DispatcherTimer();
+        turnTimer.Interval(std::chrono::seconds(1));
+        turnTimer.Tick({ this, &MainWindow::OnTimerTick });
+    }
+
+    void MainWindow::ResetTimer()
+    {
+        timeLeft = TURN_TIME_LIMIT;
+        TimerText().Text(L"Thoi gian: " + to_hstring(timeLeft) + L"s");
+        turnTimer.Start();
+    }
+
+    void MainWindow::OnTimerTick(IInspectable const&, IInspectable const&)
+    {
+        if (isGameOver) { turnTimer.Stop(); return; }
+
+        timeLeft--;
+        TimerText().Text(L"Thoi gian: " + to_hstring(timeLeft) + L"s");
+
+        if (timeLeft <= 0) { EndGameTimeout(); }
+    }
+
+    void MainWindow::EndGameTimeout()
+    {
+        isGameOver = true;
+        turnTimer.Stop();
+
+        if (isNetworkMode && currentPlayer == networkRole) {
+            SendNetworkMessageAsync(L"TIMEOUT|");
+            ShowWinner(L"BAN DA HET GIO! (THUA)", false);
+        }
+        else if (isNetworkMode && currentPlayer != networkRole) {
+            ShowWinner(L"DOI THU DA HET GIO! (THANG)", true);
+        }
+        else {
+            winrt::hstring loser = (currentPlayer == PLAYER_1) ? L"NGUOI CHOI 1" : L"NGUOI CHOI 2";
+            ShowWinner(loser + L" DA HET GIO!", false);
+        }
+    }
+
+    void MainWindow::InitBoard()
+    {
+        isGameOver = false;
+        currentPlayer = PLAYER_1;
+
+        if (isNetworkMode) {
+            TurnText().Text(networkRole == PLAYER_1 ? L"Luot cua ban (X)" : L"Doi doi thu di... (X di truoc)");
+        }
+        else {
+            TurnText().Text(L"Luot di: Nguoi choi 1 (X)");
+        }
+
+        BoardGrid().Children().Clear();
+        ChatPanel().Children().Clear();
+
+        for (int row = 0; row < BOARD_SIZE; ++row) {
+            for (int col = 0; col < BOARD_SIZE; ++col) {
+                board[row][col] = EMPTY;
+                Button btn;
+                btn.Width(40); btn.Height(40); btn.FontSize(18);
+                btn.FontWeight(Microsoft::UI::Text::FontWeights::Bold());
+                btn.Content(box_value(L""));
+                btn.Background(SolidColorBrush(Microsoft::UI::Colors::White()));
+                btn.Tag(box_value(to_hstring(row) + L"," + to_hstring(col)));
+                btn.Click({ this, &MainWindow::OnCellClicked });
+
+                Grid::SetRow(btn, row);
+                Grid::SetColumn(btn, col);
+                BoardGrid().Children().Append(btn);
+            }
+        }
+        ResetTimer();
+    }
+
+    // =====================================================================
+    // LOGIC DANH CO
     // =====================================================================
     winrt::fire_and_forget MainWindow::OnCellClicked(IInspectable const& sender, RoutedEventArgs const&)
     {
@@ -192,18 +308,13 @@ namespace winrt::CaroProject::implementation
 
         if (board[r][c] != EMPTY) co_return;
 
-        if (isNetworkMode) {
-            // Dong goi voi tien to MOVE|
-            SendNetworkMessageAsync(L"MOVE|" + to_hstring(r) + L"," + to_hstring(c));
-        }
-
+        if (isNetworkMode) { SendNetworkMessageAsync(L"MOVE|" + to_hstring(r) + L"," + to_hstring(c)); }
         ApplyMoveToMatrixAndUI(r, c);
     }
 
     void MainWindow::ApplyMoveToMatrixAndUI(int r, int c)
     {
         if (isGameOver || board[r][c] != EMPTY) return;
-
         board[r][c] = currentPlayer;
 
         for (auto const& child : BoardGrid().Children()) {
@@ -217,25 +328,119 @@ namespace winrt::CaroProject::implementation
 
         if (CheckWin(r, c, currentPlayer)) {
             isGameOver = true;
-            turnTimer.Stop();
-            TurnText().Text(currentPlayer == PLAYER_1 ? L"Nguoi choi 1 (X) Thang!" : L"Nguoi choi 2 (O) Thang!");
+            if (isNetworkMode) {
+                if (currentPlayer == networkRole) ShowWinner(L"CHUC MUNG! BAN DA THANG!", true);
+                else ShowWinner(L"RAT TIEC! BAN DA THUA!", false);
+            }
+            else {
+                winrt::hstring winner = (currentPlayer == PLAYER_1) ? L"NGUOI CHOI 1 (X) THANG!" : L"NGUOI CHOI 2 (O) THANG!";
+                ShowWinner(winner, true);
+            }
             return;
         }
 
         currentPlayer = (currentPlayer == PLAYER_1) ? PLAYER_2 : PLAYER_1;
-
         if (isNetworkMode) {
             TurnText().Text(currentPlayer == networkRole ? L"Luot cua ban!" : L"Doi doi thu di...");
         }
         else {
             TurnText().Text(currentPlayer == PLAYER_1 ? L"Luot di: Nguoi choi 1 (X)" : L"Luot di: Nguoi choi 2 (O)");
         }
-
-        ResetTimer(); // Chuyen luot thi Reset lai dong ho
+        ResetTimer();
     }
 
     // =====================================================================
-    // LOGIC XU LY KHUNG CHAT
+    // CHECK WIN VA GOI Y
+    // =====================================================================
+    bool MainWindow::CheckWin(int r, int c, int player)
+    {
+        int dirX[] = { 1, 0, 1, 1 };
+        int dirY[] = { 0, 1, 1, -1 };
+
+        for (int i = 0; i < 4; i++) {
+            int count = 1;
+            for (int step = 1; step < 5; step++) {
+                int nr = r + step * dirY[i];
+                int nc = c + step * dirX[i];
+                if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE || board[nr][nc] != player) break;
+                count++;
+            }
+            for (int step = 1; step < 5; step++) {
+                int nr = r - step * dirY[i];
+                int nc = c - step * dirX[i];
+                if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE || board[nr][nc] != player) break;
+                count++;
+            }
+            if (count >= 5) return true;
+        }
+        return false;
+    }
+
+    int MainWindow::EvaluateCell(int r, int c, int player)
+    {
+        int score = 0;
+        int dirX[] = { 1, 0, 1, 1 };
+        int dirY[] = { 0, 1, 1, -1 };
+        int opponent = (player == PLAYER_1) ? PLAYER_2 : PLAYER_1;
+
+        for (int i = 0; i < 4; i++) {
+            int myCount = 0, oppCount = 0;
+            for (int step = 1; step < 5; step++) {
+                int nr = r + step * dirY[i], nc = c + step * dirX[i];
+                if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE || board[nr][nc] != player) break;
+                myCount++;
+            }
+            for (int step = 1; step < 5; step++) {
+                int nr = r - step * dirY[i], nc = c - step * dirX[i];
+                if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE || board[nr][nc] != player) break;
+                myCount++;
+            }
+            for (int step = 1; step < 5; step++) {
+                int nr = r + step * dirY[i], nc = c + step * dirX[i];
+                if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE || board[nr][nc] != opponent) break;
+                oppCount++;
+            }
+            for (int step = 1; step < 5; step++) {
+                int nr = r - step * dirY[i], nc = c - step * dirX[i];
+                if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE || board[nr][nc] != opponent) break;
+                oppCount++;
+            }
+
+            if (myCount >= 4) score += 10000;
+            else if (oppCount >= 4) score += 5000;
+            else if (myCount == 3) score += 1000;
+            else if (oppCount == 3) score += 500;
+            else score += myCount * 10 + oppCount * 5;
+        }
+        return score;
+    }
+
+    void MainWindow::HintButton_Click(IInspectable const&, RoutedEventArgs const&)
+    {
+        if (isGameOver) return;
+        int bestScore = -1, bestR = -1, bestC = -1;
+
+        for (int r = 0; r < BOARD_SIZE; r++) {
+            for (int c = 0; c < BOARD_SIZE; c++) {
+                if (board[r][c] == EMPTY) {
+                    int score = EvaluateCell(r, c, currentPlayer);
+                    if (score > bestScore) { bestScore = score; bestR = r; bestC = c; }
+                }
+            }
+        }
+        if (bestR == -1) return;
+
+        for (auto const& child : BoardGrid().Children()) {
+            Button btn = child.as<Button>();
+            if (unbox_value<hstring>(btn.Tag()) == (to_hstring(bestR) + L"," + to_hstring(bestC))) {
+                btn.Background(SolidColorBrush(Microsoft::UI::Colors::Yellow()));
+                break;
+            }
+        }
+    }
+
+    // =====================================================================
+    // LOGIC CHAT
     // =====================================================================
     void MainWindow::AppendChatMessage(winrt::hstring const& senderName, winrt::hstring const& message, bool isMe)
     {
@@ -243,7 +448,6 @@ namespace winrt::CaroProject::implementation
         textBlock.Text(senderName + L": " + message);
         textBlock.TextWrapping(TextWrapping::Wrap);
 
-        // Mau tin nhan phan biet minh va dich
         if (isMe) {
             textBlock.Foreground(SolidColorBrush(Microsoft::UI::Colors::DarkGreen()));
             textBlock.HorizontalAlignment(HorizontalAlignment::Right);
@@ -254,8 +458,6 @@ namespace winrt::CaroProject::implementation
         }
 
         ChatPanel().Children().Append(textBlock);
-
-        // Tu dong cuon xuong dong moi nhat
         ChatScroll().UpdateLayout();
         ChatScroll().ChangeView(nullptr, ChatScroll().ScrollableHeight(), nullptr);
     }
@@ -266,311 +468,14 @@ namespace winrt::CaroProject::implementation
         if (msg.empty()) return;
 
         AppendChatMessage(L"Toi", msg, true);
-
-        if (isNetworkMode) {
-            // Dong goi voi tien to CHAT|
-            SendNetworkMessageAsync(L"CHAT|" + msg);
-        }
-
-        ChatInputTextBox().Text(L""); // Xoa o nhap lieu sau khi gui
+        if (isNetworkMode) SendNetworkMessageAsync(L"CHAT|" + msg);
+        ChatInputTextBox().Text(L"");
     }
 
     void MainWindow::ChatInputTextBox_KeyDown(IInspectable const&, Microsoft::UI::Xaml::Input::KeyRoutedEventArgs const& args)
     {
-        // Cho phep an Enter de gui Chat
         if (args.Key() == winrt::Windows::System::VirtualKey::Enter) {
             SendChat_Click(nullptr, nullptr);
-        }
-    }
-    // =====================================================================
-    // CHECK WIN
-    // =====================================================================
-    bool MainWindow::CheckWin(int r, int c, int player)
-    {
-        int dirX[] = { 1, 0, 1, 1 };
-        int dirY[] = { 0, 1, 1, -1 };
-
-        for (int i = 0; i < 4; i++)
-        {
-            int count = 1;
-
-            for (int step = 1; step < 5; step++)
-            {
-                int nr = r + step * dirY[i];
-                int nc = c + step * dirX[i];
-
-                if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE)
-                    break;
-
-                if (board[nr][nc] == player)
-                    count++;
-                else
-                    break;
-            }
-
-            for (int step = 1; step < 5; step++)
-            {
-                int nr = r - step * dirY[i];
-                int nc = c - step * dirX[i];
-
-                if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE)
-                    break;
-
-                if (board[nr][nc] == player)
-                    count++;
-                else
-                    break;
-            }
-
-            if (count >= 5)
-                return true;
-        }
-
-        return false;
-    }
-
-    // =====================================================================
-    // GREEDY HINT
-    // =====================================================================
-    int MainWindow::EvaluateCell(int r, int c, int player)
-    {
-        int score = 0;
-
-        int dirX[] = { 1, 0, 1, 1 };
-        int dirY[] = { 0, 1, 1, -1 };
-
-        int opponent = (player == PLAYER_1) ? PLAYER_2 : PLAYER_1;
-
-        for (int i = 0; i < 4; i++)
-        {
-            int myCount = 0;
-            int oppCount = 0;
-
-            for (int step = 1; step < 5; step++)
-            {
-                int nr = r + step * dirY[i];
-                int nc = c + step * dirX[i];
-
-                if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE)
-                    break;
-
-                if (board[nr][nc] == player)
-                    myCount++;
-                else
-                    break;
-            }
-
-            for (int step = 1; step < 5; step++)
-            {
-                int nr = r - step * dirY[i];
-                int nc = c - step * dirX[i];
-
-                if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE)
-                    break;
-
-                if (board[nr][nc] == player)
-                    myCount++;
-                else
-                    break;
-            }
-
-            for (int step = 1; step < 5; step++)
-            {
-                int nr = r + step * dirY[i];
-                int nc = c + step * dirX[i];
-
-                if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE)
-                    break;
-
-                if (board[nr][nc] == opponent)
-                    oppCount++;
-                else
-                    break;
-            }
-
-            for (int step = 1; step < 5; step++)
-            {
-                int nr = r - step * dirY[i];
-                int nc = c - step * dirX[i];
-
-                if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE)
-                    break;
-
-                if (board[nr][nc] == opponent)
-                    oppCount++;
-                else
-                    break;
-            }
-
-            if (myCount >= 4)
-                score += 10000;
-            else if (oppCount >= 4)
-                score += 5000;
-            else if (myCount == 3)
-                score += 1000;
-            else if (oppCount == 3)
-                score += 500;
-            else
-                score += myCount * 10 + oppCount * 5;
-        }
-
-        return score;
-    }
-
-    // =====================================================================
-    // HINT BUTTON
-    // =====================================================================
-    void MainWindow::HintButton_Click(
-        IInspectable const&,
-        RoutedEventArgs const&)
-    {
-        if (isGameOver)
-            return;
-
-        int bestScore = -1;
-        int bestR = -1;
-        int bestC = -1;
-
-        for (int r = 0; r < BOARD_SIZE; r++)
-        {
-            for (int c = 0; c < BOARD_SIZE; c++)
-            {
-                if (board[r][c] == EMPTY)
-                {
-                    int score = EvaluateCell(r, c, currentPlayer);
-
-                    if (score > bestScore)
-                    {
-                        bestScore = score;
-                        bestR = r;
-                        bestC = c;
-                    }
-                }
-            }
-        }
-
-        if (bestR == -1)
-            return;
-
-        for (auto const& child : BoardGrid().Children())
-        {
-            Button btn = child.as<Button>();
-
-            if (unbox_value<hstring>(btn.Tag()) ==
-                (to_hstring(bestR) + L"," + to_hstring(bestC)))
-            {
-                btn.Background(
-                    SolidColorBrush(Microsoft::UI::Colors::Yellow()));
-
-                break;
-            }
-        }
-    }
-    // =====================================================================
-    // RESTART
-    // =====================================================================
-    void MainWindow::RestartButton_Click(
-        IInspectable const&,
-        RoutedEventArgs const&)
-    {
-        InitBoard();
-    }
-
-    // =====================================================================
-        // HOST GAME (Tao phong - Dong vai tro Server)
-        // =====================================================================
-    winrt::fire_and_forget MainWindow::HostGame_Click(
-        IInspectable const&,
-        RoutedEventArgs const&)
-    {
-        try
-        {
-            // Don dep listener cu neu co
-            if (tcpListener != nullptr) {
-                tcpListener.Close();
-                tcpListener = nullptr;
-            }
-
-            tcpListener = StreamSocketListener();
-
-            // Lang nghe su kien khi co Client ket noi toi
-            tcpListener.ConnectionReceived([this](
-                StreamSocketListener const& /*sender*/,
-                StreamSocketListenerConnectionReceivedEventArgs const& args)
-                {
-                    // Lay socket duoc tao ra tu ket noi
-                    networkSocket = args.Socket();
-                    socketWriter = DataWriter(networkSocket.OutputStream());
-
-                    isNetworkMode = true;
-                    networkRole = PLAYER_1; // Host mac dinh di truoc (X)
-
-                    // Cap nhat UI (Phai dua vao DispatcherQueue vi day la luong mang)
-                    DispatcherQueue().TryEnqueue([this]() {
-                        StatusText().Text(L"Trang thai: Da ket noi! Ban la Host (X).");
-                        InitBoard(); // Khoi tao lai ban co khi co nguoi vao
-                        });
-
-                    // Bat dau vong lap doc du lieu tu Client
-                    ListenForDataAsync(networkSocket);
-                });
-
-            // Mo cong 9000 de doi ket noi
-            co_await tcpListener.BindServiceNameAsync(L"9000");
-
-            StatusText().Text(L"Trang thai: Dang cho doi thu (Cong 9000)...");
-        }
-        catch (winrt::hresult_error const& ex)
-        {
-            StatusText().Text(L"Loi tao phong: " + ex.message());
-        }
-    }
-
-    // =====================================================================
-    // JOIN GAME (Vao phong - Dong vai tro Client)
-    // =====================================================================
-    winrt::fire_and_forget MainWindow::JoinGame_Click(
-        IInspectable const&,
-        RoutedEventArgs const&)
-    {
-        try
-        {
-            winrt::hstring ipAddress = IpTextBox().Text();
-            if (ipAddress.empty()) {
-                StatusText().Text(L"Vui long nhap IP Server!");
-                co_return;
-            }
-
-            // Don dep socket cu neu co
-            if (networkSocket != nullptr) {
-                networkSocket.Close();
-                networkSocket = nullptr;
-            }
-
-            StatusText().Text(L"Trang thai: Dang ket noi...");
-
-            networkSocket = StreamSocket();
-            HostName hostName{ ipAddress };
-
-            // Yeu cau ket noi toi IP va Cong 9000
-            co_await networkSocket.ConnectAsync(hostName, L"9000");
-
-            // Neu ket noi thanh cong:
-            socketWriter = DataWriter(networkSocket.OutputStream());
-            isNetworkMode = true;
-            networkRole = PLAYER_2; // Client mac dinh di sau (O)
-
-            StatusText().Text(L"Trang thai: Da ket noi! Ban la Client (O).");
-
-            // Khoi tao ban co
-            InitBoard();
-
-            // Bat dau vong lap doc du lieu tu Host
-            ListenForDataAsync(networkSocket);
-        }
-        catch (winrt::hresult_error const& ex)
-        {
-            StatusText().Text(L"Loi ket noi: Khong tim thay Server.");
         }
     }
 }
