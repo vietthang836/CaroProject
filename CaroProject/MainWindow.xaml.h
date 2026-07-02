@@ -1,5 +1,9 @@
 #pragma once
 #include "MainWindow.g.h"
+#include <winrt/Windows.Networking.Sockets.h>
+#include <winrt/Windows.Storage.Streams.h>
+#include <winrt/Windows.Networking.h>
+#include <winrt/Microsoft.UI.Xaml.h> // Bắt buộc cho DispatcherTimer
 
 namespace winrt::CaroProject::implementation
 {
@@ -8,30 +12,49 @@ namespace winrt::CaroProject::implementation
         MainWindow();
 
         void InitBoard();
-
-        // Da doi thanh fire_and_forget de ho tro hien thi bang thong bao
         winrt::fire_and_forget OnCellClicked(winrt::Windows::Foundation::IInspectable const& sender, winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
-
         void RestartButton_Click(winrt::Windows::Foundation::IInspectable const& sender, winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
-
-        // =========================================================
-        // CAC HAM PHUC VU THUAT TOAN THAM LAM (GREEDY STRATEGY)
-        // =========================================================
         void HintButton_Click(winrt::Windows::Foundation::IInspectable const& sender, winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
-        int EvaluateCell(int r, int c, int player);
-        // =========================================================
 
+        int EvaluateCell(int r, int c, int player);
         bool CheckWin(int r, int c, int player);
+
+        // -- CÁC HÀM MẠNG --
+        winrt::fire_and_forget HostGame_Click(winrt::Windows::Foundation::IInspectable const& sender, winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        winrt::fire_and_forget JoinGame_Click(winrt::Windows::Foundation::IInspectable const& sender, winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        winrt::fire_and_forget ListenForDataAsync(winrt::Windows::Networking::Sockets::StreamSocket socket);
+        winrt::fire_and_forget SendNetworkMessageAsync(winrt::hstring const& message); // Đã đổi tên để gửi đa năng
+        void ApplyMoveToMatrixAndUI(int r, int c);
+
+        // -- CÁC HÀM MỚI CHO CHAT VÀ TIMER --
+        void SetupTimer();
+        void OnTimerTick(winrt::Windows::Foundation::IInspectable const& sender, winrt::Windows::Foundation::IInspectable const& args);
+        void ResetTimer();
+        void EndGameTimeout();
+
+        void AppendChatMessage(winrt::hstring const& senderName, winrt::hstring const& message, bool isMe);
+        void SendChat_Click(winrt::Windows::Foundation::IInspectable const& sender, winrt::Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void ChatInputTextBox_KeyDown(winrt::Windows::Foundation::IInspectable const& sender, winrt::Microsoft::UI::Xaml::Input::KeyRoutedEventArgs const& args);
 
     private:
         static const int BOARD_SIZE = 15;
         static const int EMPTY = 0;
         static const int PLAYER_1 = 1;
         static const int PLAYER_2 = 2;
+        static const int TURN_TIME_LIMIT = 30; // 30 giây mỗi lượt
 
         int board[BOARD_SIZE][BOARD_SIZE];
         int currentPlayer;
         bool isGameOver;
+
+        bool isNetworkMode = false;
+        int networkRole = 0;
+
+        winrt::Windows::Networking::Sockets::StreamSocketListener tcpListener{ nullptr };
+        winrt::Windows::Networking::Sockets::StreamSocket networkSocket{ nullptr };
+        winrt::Windows::Storage::Streams::DataWriter socketWriter{ nullptr };
+        winrt::Microsoft::UI::Xaml::DispatcherTimer turnTimer{ nullptr };
+        int timeLeft;
     };
 }
 

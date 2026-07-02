@@ -6,21 +6,63 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <Grid Background="White">
-        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+    <Grid Background="#F5F5F5" Padding="20">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="350"/>
+        </Grid.ColumnDefinitions>
 
-            <TextBlock x:Name="TurnText" Text="Luot di: Nguoi choi 1 (X)" FontSize="24" Margin="0,0,0,20" Foreground="Black" FontWeight="Bold"/>
+        <StackPanel Grid.Column="0" HorizontalAlignment="Center" VerticalAlignment="Center">
 
-            <Border BorderBrush="Black" BorderThickness="2">
-                <Grid x:Name="BoardGrid" Background="LightGray">
-                </Grid>
+            <Border Background="White" CornerRadius="8" Padding="15" Margin="0,0,0,15" BorderBrush="#E0E0E0" BorderThickness="1">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="CẤU HÌNH MẠNG" FontSize="12" FontWeight="Bold" Foreground="#757575"/>
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBox x:Name="IpTextBox" Text="127.0.0.1" PlaceholderText="Nhập IP Server" Width="150"/>
+                        <Button Content="Tạo Phòng" Click="HostGame_Click" Background="#1E88E5" Foreground="White"/>
+                        <Button Content="Vào Phòng" Click="JoinGame_Click"/>
+                    </StackPanel>
+                    <TextBlock x:Name="StatusText" Text="Trạng thái: Chế độ Offline" FontSize="13" Foreground="#1E88E5" FontWeight="SemiBold"/>
+                </StackPanel>
+            </Border>
+
+            <TextBlock x:Name="TurnText" Text="Lượt đi: Người chơi 1 (X)" FontSize="22" Margin="0,0,0,10" Foreground="#212121" FontWeight="Bold" HorizontalAlignment="Center"/>
+            <TextBlock x:Name="TimerText" Text="⏳ Thời gian: 30s" FontSize="18" Margin="0,0,0,15" Foreground="Red" FontWeight="Bold" HorizontalAlignment="Center"/>
+
+            <Border BorderBrush="#424242" BorderThickness="3" CornerRadius="4" HorizontalAlignment="Center" Background="#E0E0E0">
+                <Grid x:Name="BoardGrid" Padding="2"></Grid>
             </Border>
 
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20,0,0" Spacing="20">
-                <Button Content="Goi Y Nuoc Di" Width="150" Height="40" Click="HintButton_Click"/>
-                <Button Content="Choi Lai" Width="120" Height="40" Click="RestartButton_Click"/>
+                <Button Content="Gợi Ý Nước Đi" Width="150" Height="40" Click="HintButton_Click" Background="#FFB300"/>
+                <Button Content="Chơi Lại" Width="120" Height="40" Click="RestartButton_Click"/>
             </StackPanel>
-
         </StackPanel>
+
+        <Border Grid.Column="1" Background="White" BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="8" Padding="15" Margin="20,0,0,0">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Row="0" Text="💬 TRÒ CHUYỆN" FontSize="16" FontWeight="Bold" Foreground="#424242" Margin="0,0,0,10"/>
+
+                <ScrollViewer Grid.Row="1" x:Name="ChatScroll" Background="#FAFAFA" BorderBrush="#EEEEEE" BorderThickness="1" Padding="10" Margin="0,0,0,10">
+                    <StackPanel x:Name="ChatPanel" Spacing="8">
+                    </StackPanel>
+                </ScrollViewer>
+
+                <Grid Grid.Row="2">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="ChatInputTextBox" Grid.Column="0" PlaceholderText="Nhập tin nhắn..." KeyDown="ChatInputTextBox_KeyDown" Margin="0,0,10,0"/>
+                    <Button Grid.Column="1" Content="Gửi" Click="SendChat_Click" Background="#43A047" Foreground="White"/>
+                </Grid>
+            </Grid>
+        </Border>
+
     </Grid>
 </Window>
