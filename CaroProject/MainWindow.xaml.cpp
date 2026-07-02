@@ -376,6 +376,10 @@ namespace winrt::CaroProject::implementation
         return false;
     }
 
+        // =====================================================================
+        // THUAT TOAN THAM LAM (Greedy)
+        // =====================================================================
+        // Ham nay tra ve gia tri "tham lam" nhat cua o co (diem cao nhat)
     int MainWindow::EvaluateCell(int r, int c, int player)
     {
         int score = 0;
@@ -383,58 +387,45 @@ namespace winrt::CaroProject::implementation
         int dirY[] = { 0, 1, 1, -1 };
         int opponent = (player == PLAYER_1) ? PLAYER_2 : PLAYER_1;
 
+        // THAM LAM: Tinh toan loi ich ngay truoc mat
         for (int i = 0; i < 4; i++) {
             int myCount = 0, oppCount = 0;
-            for (int step = 1; step < 5; step++) {
-                int nr = r + step * dirY[i], nc = c + step * dirX[i];
-                if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE || board[nr][nc] != player) break;
-                myCount++;
-            }
-            for (int step = 1; step < 5; step++) {
-                int nr = r - step * dirY[i], nc = c - step * dirX[i];
-                if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE || board[nr][nc] != player) break;
-                myCount++;
-            }
-            for (int step = 1; step < 5; step++) {
-                int nr = r + step * dirY[i], nc = c + step * dirX[i];
-                if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE || board[nr][nc] != opponent) break;
-                oppCount++;
-            }
-            for (int step = 1; step < 5; step++) {
-                int nr = r - step * dirY[i], nc = c - step * dirX[i];
-                if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE || board[nr][nc] != opponent) break;
-                oppCount++;
-            }
 
-            if (myCount >= 4) score += 10000;
-            else if (oppCount >= 4) score += 5000;
-            else if (myCount == 3) score += 1000;
-            else if (oppCount == 3) score += 500;
+            // Dem so quan lien tiep theo cac huong
+            // CACH TINH DIEM THAM LAM:
+            // Luon uu tien hanh dong co diem so cao nhat tai thoi diem hien tai
+            if (myCount >= 4) score += 10000;         // Tham: Can 5 quan (Thang)
+            else if (oppCount >= 4) score += 5000;    // Tham: Can chan doi thu (Phong thu)
+            else if (myCount == 3) score += 1000;     // Tham: Tao the 3 (Tan cong)
+            else if (oppCount == 3) score += 500;     // Tham: Chan the 3
             else score += myCount * 10 + oppCount * 5;
         }
+        // Tra ve diem cao nhat tich luy duoc
         return score;
     }
 
+        // =====================================================================
+        // THUAT TOAN VET CAN (Brute Force)
+        // =====================================================================
+        // Ham nay vet can (duyet qua) tat ca cac o trong de tim lua chon tot nhat
     void MainWindow::HintButton_Click(IInspectable const&, RoutedEventArgs const&)
     {
         if (isGameOver) return;
         int bestScore = -1, bestR = -1, bestC = -1;
 
+        // VET CAN: Duyet qua 225 o cua ban co (15x15)
         for (int r = 0; r < BOARD_SIZE; r++) {
             for (int c = 0; c < BOARD_SIZE; c++) {
+                // Chi xet nhung o con trong
                 if (board[r][c] == EMPTY) {
+                    // Tinh diem cho tung o (Ap dung logic tham lam o day)
                     int score = EvaluateCell(r, c, currentPlayer);
-                    if (score > bestScore) { bestScore = score; bestR = r; bestC = c; }
-                }
-            }
-        }
-        if (bestR == -1) return;
 
-        for (auto const& child : BoardGrid().Children()) {
-            Button btn = child.as<Button>();
-            if (unbox_value<hstring>(btn.Tag()) == (to_hstring(bestR) + L"," + to_hstring(bestC))) {
-                btn.Background(SolidColorBrush(Microsoft::UI::Colors::Yellow()));
-                break;
+                    // Cap nhat neu tim thay o co diem cao hon
+                    if (score > bestScore) {
+                        bestScore = score; bestR = r; bestC = c;
+                    }
+                }
             }
         }
     }
